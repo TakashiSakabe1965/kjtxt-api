@@ -1,7 +1,13 @@
+
 const express = require('express');
+const cors = require('cors');
 const AWS = require('aws-sdk');
+
 const app = express();
 const port = process.env.PORT || 3000;
+
+// CORS対応（必要に応じて）
+app.use(cors());
 
 // DynamoDB設定（リージョンは必要に応じて変更）
 AWS.config.update({ region: 'ap-northeast-1' });
@@ -13,7 +19,7 @@ app.get('/kjtxts', async (req, res) => {
     try {
         const data = await dynamodb.scan({ TableName: tableName }).promise();
         if (!data.Items || data.Items.length === 0) {
-            res.status(500).json("record not found");
+            res.status(404).json("record not found");
         } else {
             res.status(200).json(data.Items);
         }
@@ -38,7 +44,7 @@ app.get('/kjtxt', async (req, res) => {
         if (data.Item) {
             res.status(200).json(data.Item);
         } else {
-            res.status(500).json("record not found");
+            res.status(404).json("record not found");
         }
     } catch (err) {
         res.status(500).json({ error: err.message });
