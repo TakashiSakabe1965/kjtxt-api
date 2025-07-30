@@ -1,28 +1,26 @@
 
 const express = require('express');
 const cors = require('cors');
-const AWS = require('aws-sdk');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
+const { DynamoDBDocumentClient, ScanCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
 
 const app = express();
+const port = process.env.PORT || 8080;
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-    console.log(`Server running on port ${port}`);
-});
-
-
-// CORS対応（必要に応じて）
+// CORS対応
 app.use(cors());
 
 // DynamoDB設定（リージョンは必要に応じて変更）
-AWS.config.update({ region: 'ap-northeast-1' });
-const dynamodb = new AWS.DynamoDB.DocumentClient();
+const client = new DynamoDBClient({ region: 'ap-northeast-1' });
+const dynamodb = DynamoDBDocumentClient.from(client);
 const tableName = 'kjtxt-translate-tb';
 
 // 全件取得API（順序指定：skj → jkj）
 app.get('/kjtxts', async (req, res) => {
     try {
-        const data = await dynamodb.scan({ TableName: tableName }).promise();
+        const command = new ScanCommand({ TableName: tableName });
+        const data = await dynamodb.send(command);
+
         if (!data.Items || data.Items.length === 0) {
             res.status(404).json("record not found");
         } else {
@@ -45,11 +43,12 @@ app.get('/kjtxt', async (req, res) => {
     }
 
     try {
-        const params = {
+        const command = new GetCommand({
             TableName: tableName,
             Key: { skj: skj }
-        };
-        const data = await dynamodb.get(params).promise();
+        });
+        const data = await dynamodb.send(command);
+
         if (data.Item && data.Item.jkj !== undefined) {
             res.status(200).json({ jkj: data.Item.jkj });
         } else {
